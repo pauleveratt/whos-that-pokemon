@@ -7,7 +7,7 @@ window.WTP_CONFIG = {
   // Client ID of your Twitch application. Used by the setup page (index.html) for the
   // "Connect with Twitch" button. A Client ID is not secret, so it's safe to upload.
   // When hosting online, leave oauthToken below EMPTY. Each streamer gets their own token from the setup page.
-  twitchClientId: "",
+  twitchClientId: "xi5hg40edrfiipefciww2fzy71okzt",
 
   // ---- Running locally on your own PC ----
   // Your Twitch channel name (lowercase, no #)
