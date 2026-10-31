@@ -71,9 +71,20 @@
       <button class="twitch" id="connectBtn">Connect with Twitch</button>
     </div>
     <p id="authStatus" style="margin-top:10px"></p>
+    <details id="botBox">
+      <summary>Use a bot account instead of your own</summary>
+      <p class="muted" style="margin-top:8px">The messages can come from a separate account (e.g. <i>YourNameBot</i>) instead of you.</p>
+      <ol class="muted">
+        <li>Create the bot account on Twitch. Log out of your own account first, or use a private/incognito window. Verify its email so it's allowed to chat.</li>
+        <li>In your own chat, type <code>/mod botname</code>. This stops slow mode, follower-only mode and similar settings from blocking the bot.</li>
+        <li>Open this page in a <b>private/incognito window</b> so Twitch doesn't log you in as yourself.</li>
+        <li>Click <b>Connect with Twitch</b> and log in as the <b>bot</b> account.</li>
+        <li>In Settings, change <b>Your channel</b> to <b>your own</b> channel name (it fills in the bot's name by default). Then copy the link as normal.</li>
+      </ol>
+    </details>
     <details id="manualBox">
       <summary>Paste a chat token instead</summary>
-      <p class="muted" style="margin-top:8px">If you'd rather have a separate bot account post the messages, get a chat token for that account (with the <code>chat:read</code> and <code>chat:edit</code> scopes) and paste it here.</p>
+      <p class="muted" style="margin-top:8px">Only needed if the Connect button doesn't work for you. Get a token for the account that should post the messages, for example from <a href="https://twitchtokengenerator.com" target="_blank" rel="noopener">twitchtokengenerator.com</a>. Choose "Bot Chat Token", log in as that account, and copy the <i>Access Token</i>. It needs the <code>chat:read</code> and <code>chat:edit</code> scopes. Then paste it here and set <b>Your channel</b> below.</p>
       <div class="row"><input type="password" id="manualToken" placeholder="oauth:…"><button class="secondary" id="manualBtn">Use token</button></div>
     </details>
   </section>
@@ -84,6 +95,7 @@
       <div><label for="channel">Your channel</label><input type="text" id="channel" placeholder="channel name"></div>
       <div><label for="cmd">Start command</label><input type="text" id="cmd" value="!wtp"></div>
     </div>
+    <p id="postNote" class="muted" style="margin:8px 0 0"></p>
 
     <label style="margin-top:16px">Default generations <span class="muted">(mods can still pick others with e.g. <code>!wtp 1-3</code>)</span></label>
     <div class="gens" id="gens"></div>
@@ -96,6 +108,8 @@
       <div><label for="seconds">Guessing time (s)</label><input type="number" id="seconds" min="5" max="300" value="30"></div>
       <div><label for="reveal">Show answer for (s)</label><input type="number" id="reveal" min="2" max="60" value="8"></div>
       <div><label for="hint">Hint at seconds left</label><input type="number" id="hint" min="0" max="300" value="10"></div>
+      <div><label for="chatdelay">Chat answer delay (s)</label><input type="number" id="chatdelay" min="0" max="60" value="5"></div>
+      <div><label for="volume">Sound volume (0–100)</label><input type="number" id="volume" min="0" max="100" value="80"></div>
     </div>
     <label class="check"><input type="checkbox" id="end" checked> End the round as soon as someone guesses right</label>
     <label class="check"><input type="checkbox" id="lenient"> Lenient spelling <span class="muted">(accept small typos like "pikachoo")</span></label>
@@ -111,11 +125,13 @@
       <button id="copyBtn">Copy link</button>
     </div>
     <p id="copyMsg" class="muted" style="margin-top:6px"></p>
+    <p class="muted" style="margin-top:6px">Your settings are saved inside this link. <b>If you change any setting later, the link changes too.</b> Copy it again and paste it over the old URL in the OBS browser source properties. The same goes for when your Twitch login expires and you reconnect.</p>
     <div class="warn" id="secretWarn">Keep this link private. Anyone who has it can post in your chat as you. Don't show it on stream, and if it leaks, disconnect this site from your Twitch account under Settings → Connections.</div>
     <ol>
       <li>In OBS: <b>Sources → + → Browser</b>. Leave "Local file" unticked and paste the link as the URL.</li>
       <li>Set width <b>800</b> and height <b>600</b>.</li>
       <li>Untick <b>Shutdown source when not visible</b>.</li>
+      <li>For sound: tick <b>Control audio via OBS</b> so the game's sounds show up in your audio mixer, where you can adjust their volume.</li>
       <li>To use it in other scenes, copy the source and use <b>Paste (Reference)</b>.</li>
       <li>In chat, type <code id="cmdExample">!wtp</code> to play.</li>
     </ol>
@@ -156,6 +172,7 @@
   };
 
   let auth = null; // { token, login }
+  let copiedUrl = null; // last link copied, to warn when settings change afterwards
 
   // ---------- Generation checkboxes ----------
   $("gens").innerHTML = GENS.map(([region, range], i) =>
@@ -177,7 +194,7 @@
   }
 
   // ---------- Saved settings (not the token) ----------
-  const fields = ["channel", "cmd", "seconds", "reveal", "hint", "end", "lenient", "roleMod", "roleVip"];
+  const fields = ["channel", "cmd", "seconds", "reveal", "hint", "chatdelay", "volume", "end", "lenient", "roleMod", "roleVip"];
   try {
     const saved = JSON.parse(store.get("wtp-setup") || "{}");
     for (const f of fields) if (f in saved) $(f).type === "checkbox" ? $(f).checked = saved[f] : $(f).value = saved[f];
@@ -200,6 +217,8 @@
     p.set("seconds", $("seconds").value || 30);
     p.set("reveal", $("reveal").value || 8);
     p.set("hint", $("hint").value || 0);
+    p.set("chatdelay", $("chatdelay").value || 0);
+    p.set("volume", $("volume").value || 0);
     p.set("end", $("end").checked ? 1 : 0);
     p.set("lenient", $("lenient").checked ? 1 : 0);
     p.set("roles", [$("roleMod").checked && "moderator", $("roleVip").checked && "vip"].filter(Boolean).join(","));
@@ -215,6 +234,14 @@
     $("url").placeholder = "Enter your channel name above";
     [$("copyBtn"), $("testBtn"), $("showBtn")].forEach(b => b.disabled = !channel);
     $("secretWarn").style.display = auth ? "block" : "none";
+    if (copiedUrl && $("url").value !== copiedUrl) {
+      $("copyMsg").innerHTML = `<span class="bad">You changed a setting, so the link has changed. Copy it again and replace the URL in OBS.</span>`;
+    }
+
+    const ch = channel.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    $("postNote").innerHTML = !auth ? "" : auth.login === ch
+      ? `Chat messages will be posted by you (${auth.login}).`
+      : `Chat messages will be posted by <b>${auth.login}</b> in <b>${ch || "?"}</b>'s chat. Make sure ${auth.login} is a mod there.`;
 
     const cmd = $("cmd").value.trim().toLowerCase() || "!wtp";
     $("cmdExample").textContent = cmd;
@@ -235,6 +262,7 @@
   $("copyBtn").onclick = async () => {
     try { await navigator.clipboard.writeText($("url").value); }
     catch (e) { $("url").type = "text"; $("url").select(); document.execCommand("copy"); }
+    copiedUrl = $("url").value;
     $("copyMsg").textContent = "Copied! Paste it into the OBS browser source URL.";
   };
   $("testBtn").onclick = () => window.open(overlayUrl("&debug"), "_blank");

@@ -39,11 +39,21 @@ window.WTP_CONFIG = {
 
   roundSeconds: 30,         // time chat has to guess
   revealSeconds: 8,         // how long the answer stays on screen
+  chatDelaySeconds: 5,      // wait this long after the reveal before posting the answer/winner in chat (covers stream delay)
   endOnCorrectGuess: true,  // true = reveal as soon as someone gets it; false = always run the full timer
   lenientSpelling: false,   // true = accept small typos ("pikachoo", "charzard"); short names like Mew still need exact spelling
   hintAtSecondsLeft: 10,    // show first letter + blanks with this many seconds left (0 = no hint)
   cooldownSeconds: 0,       // wait time after a round before a new one can start
   avoidRepeats: 50,         // don't repeat any of the last N Pokémon
+
+  // Sound effects (files in the "sounds" folder). Each event picks one file at random from its list.
+  soundVolume: 80,          // 0-100, 0 = no sound
+  playAllSounds: false,     // true = play every file in the list one after another instead of picking one
+  sounds: {
+    start: ["sounds/whos-that-pokemon.mp3"],
+    win: ["sounds/capture.mp3", "sounds/item-get.mp3"],
+    nobody: ["sounds/run-away.mp3", "sounds/walk-into.mp3"],
+  },
 
   // Chat messages. Placeholders: {user} {pokemon} {seconds} {gens} {time} {hint}
   // Set a message to "" to not send it.

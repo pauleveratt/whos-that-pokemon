@@ -52,7 +52,7 @@
     font: 800 12px Nunito, sans-serif; color: #fff; background: #c0392b; padding: 2px 10px; border-radius: 999px;
   }
 
-  .mon { position: absolute; left: 50%; top: 280px; width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+  .mon { position: absolute; left: 50%; top: 268px; width: 280px; height: 280px; margin: -140px 0 0 -140px; }
   .mon img {
     width: 100%; height: 100%; object-fit: contain;
     filter: brightness(0) drop-shadow(0 0 4px rgba(255, 255, 255, .9));
@@ -66,15 +66,15 @@
   @keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
 
   .hint {
-    position: absolute; left: 0; right: 0; top: 452px; text-align: center;
-    font: 900 34px Nunito, sans-serif; color: #fff; letter-spacing: 6px;
+    position: absolute; left: 30px; right: 30px; top: 422px; text-align: center; white-space: nowrap;
+    font: 900 32px/40px Nunito, sans-serif; color: #fff; letter-spacing: 4px;
     -webkit-text-stroke: 6px var(--navy); paint-order: stroke fill;
     opacity: 0; transition: opacity .3s;
   }
   .hint.show { opacity: 1; }
 
   .answer {
-    position: absolute; left: 50%; top: 438px; transform: translateX(-50%) scale(.6);
+    position: absolute; left: 50%; top: 420px; transform: translateX(-50%) scale(.6);
     opacity: 0; transition: opacity .3s, transform .4s cubic-bezier(.2, 1.6, .4, 1);
     text-align: center; white-space: nowrap;
   }
@@ -168,12 +168,19 @@
     commands: { start: "!wtp", stop: "!wtpstop", setGens: "!wtpgen" },
     defaultGenerations: "all",
     roundSeconds: 30, revealSeconds: 8, endOnCorrectGuess: true, lenientSpelling: false,
-    hintAtSecondsLeft: 10, cooldownSeconds: 0, avoidRepeats: 50,
+    hintAtSecondsLeft: 10, cooldownSeconds: 0, chatDelaySeconds: 5,
+    soundVolume: 80, playAllSounds: false,
+    sounds: {
+      start: ["sounds/whos-that-pokemon.mp3"],
+      win: ["sounds/capture.mp3", "sounds/item-get.mp3"],
+      nobody: ["sounds/run-away.mp3", "sounds/walk-into.mp3"],
+    }, avoidRepeats: 50,
     messages: {},
   };
   const user = window.WTP_CONFIG || {};
   const cfg = { ...DEFAULTS, ...user,
     commands: { ...DEFAULTS.commands, ...user.commands },
+    sounds: { ...DEFAULTS.sounds, ...user.sounds },
     messages: { ...user.messages } };
 
   // Settings can also come from the URL (?a=b or #a=b), which is how the hosted setup page
@@ -193,6 +200,8 @@
   num("reveal", "revealSeconds");
   num("hint", "hintAtSecondsLeft");
   num("cooldown", "cooldownSeconds");
+  num("chatdelay", "chatDelaySeconds");
+  num("volume", "soundVolume");
   if (params.has("end")) cfg.endOnCorrectGuess = params.get("end") !== "0";
   if (params.has("lenient")) cfg.lenientSpelling = params.get("lenient") !== "0";
   if (params.has("roles")) cfg.allowedRoles = ["broadcaster", ...params.get("roles").split(",").filter(Boolean)];
@@ -342,6 +351,25 @@
     });
   }
 
+  // ---------- Sounds ----------
+  // Each event has a list of files: one is picked at random, or all play in order with playAllSounds.
+  const soundVolume = Math.max(0, Math.min(100, cfg.soundVolume)) / 100;
+  if (soundVolume) Object.values(cfg.sounds).flat().forEach(src => { const a = new Audio(); a.preload = "auto"; a.src = src; });
+
+  function playSound(kind) {
+    const list = cfg.sounds[kind] || [];
+    if (!list.length || !soundVolume) return;
+    const files = cfg.playAllSounds ? list.slice() : [list[Math.floor(Math.random() * list.length)]];
+    const next = () => {
+      if (!files.length) return;
+      const a = new Audio(files.shift());
+      a.volume = soundVolume;
+      a.onended = next;
+      a.play().catch(e => log(`Sound didn't play (${e.name}). In a normal browser, click the page once first.`, "sys"));
+    };
+    next();
+  }
+
   function fmt(template, vars) {
     return String(template || "").replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
   }
@@ -379,6 +407,7 @@
     el.stage.classList.add("show");
 
     state = "guessing";
+    playSound("start");
     log(`Round started: #${id} ${name}`, "sys");
     say(cfg.messages.start, { seconds: cfg.roundSeconds, gens: formatGens(gens) });
 
@@ -399,6 +428,9 @@
       round.hinted = true;
       const hint = hintFor(round.name);
       el.hint.textContent = hint;
+      // Shrink long names so the hint stays on one line above the timer bar
+      el.hint.style.fontSize = "";
+      for (let size = 32; size > 14 && el.hint.scrollWidth > el.hint.clientWidth; size -= 2) el.hint.style.fontSize = size - 2 + "px";
       el.hint.classList.add("show");
       say(cfg.messages.hint, { hint });
     }
@@ -417,15 +449,19 @@
 
     el.answerName.textContent = `It's ${round.name}!`;
     const r = el.answerResult;
+    // Hold the chat announcement back so it doesn't spoil the reveal for viewers behind on stream delay
+    const sayLater = (template, vars) => setTimeout(() => say(template, vars), cfg.chatDelaySeconds * 1000);
     if (cancelled) {
       r.textContent = "Round cancelled"; r.className = "result";
-      say(cfg.messages.cancel, { pokemon: round.name });
+      sayLater(cfg.messages.cancel, { pokemon: round.name });
     } else if (round.winner) {
       r.textContent = `🏆 ${round.winner} got it!`; r.className = "result win";
-      say(cfg.messages.win, { user: round.winner, pokemon: round.name, time: round.winTime });
+      playSound("win");
+      sayLater(cfg.messages.win, { user: round.winner, pokemon: round.name, time: round.winTime });
     } else {
       r.textContent = "Nobody guessed it!"; r.className = "result";
-      say(cfg.messages.nobody, { pokemon: round.name });
+      playSound("nobody");
+      sayLater(cfg.messages.nobody, { pokemon: round.name });
     }
     el.answer.classList.add("show");
 

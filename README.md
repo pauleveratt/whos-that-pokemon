@@ -12,6 +12,7 @@ winner (or "nobody guessed it") is announced on the overlay and in chat.
 | `index.html` | Setup page for hosting online. Friends log in with Twitch and get their own overlay link. |
 | `config.js` | Your settings: channel, bot login, commands, timer and chat messages. |
 | `pokemon-data.js` | Names of all 1025 Pokémon (Gen 1–9). You don't need to edit it. |
+| `sounds/` | Sound effects for round start, a correct guess, and nobody guessing. |
 
 The artwork is loaded from the PokeAPI sprite repository on GitHub, so the PC running OBS needs internet access.
 
@@ -49,7 +50,19 @@ The site is plain files with no server code, so any free static host works. Thes
 - The Twitch login expires after a while. The setup page shows roughly how long it lasts. When it expires,
   the game keeps working on screen without posting in chat, and a small red "Chat login expired" note
   appears on the overlay. They then open the site, connect again and paste the new link into OBS.
-- If they want a bot account to post instead of their own, they can paste a token for that account
+- **Changing settings changes the link.** All settings live inside the overlay link. After changing anything on
+  the setup page, or reconnecting Twitch, they must copy the new link and paste it over the old URL in the OBS browser
+  source properties. Otherwise OBS keeps using the old settings. The setup page warns them if they change a setting
+  after copying.
+- **Using a bot account** (so messages come from e.g. *TheirNameBot* instead of them):
+  1. Create the bot account on Twitch and verify its email.
+  2. In their own chat, type `/mod botname` so chat restrictions don't block it.
+  3. Open the setup page in a private/incognito window so Twitch doesn't log them in as themselves.
+  4. Click **Connect with Twitch** and log in as the bot.
+  5. Change **Your channel** to their own channel name (it fills in the bot's name), then copy the link.
+
+  The setup page has these steps under "Use a bot account instead of your own". If Connect doesn't work for them,
+  they can get a token from https://twitchtokengenerator.com instead ("Bot Chat Token", logged in as the bot) and paste it
   under "Paste a chat token instead".
 
 ## Setup on your own PC (without hosting)
@@ -109,7 +122,14 @@ The first correct guess wins.
 - `hintAtSecondsLeft`: with this many seconds left, shows the first letter and blanks (e.g. `P _ _ _ _ _ _`).
   Set to `0` for no hints.
 - `defaultGenerations`: e.g. `[1]`, `[1, 2, 3]` or `"all"`.
+- `chatDelaySeconds`: how long to wait after the overlay reveals the answer before posting the winner or answer
+  in chat (default 5). Your stream reaches viewers a few seconds late, so without this, chat would see the answer
+  before the reveal shows on stream. Match it roughly to your stream delay, or set `0` to post straight away.
 - `cooldownSeconds`: minimum gap between rounds.
+- `soundVolume` / `sounds`: sound effects from the `sounds` folder. One plays when a round starts, and one when the answer
+  is revealed (a different set for a winner and for nobody). When an event has more than one file, one is picked at
+  random. Set `playAllSounds: true` to play them all in order instead. `soundVolume: 0` turns sound off.
+  In OBS, tick **Control audio via OBS** on the browser source so the sounds appear in the audio mixer.
 - `messages`: everything the bot says in chat. Set any message to `""` to turn it off.
 
 You can also set the channel or the default generations in the browser source URL. Untick
