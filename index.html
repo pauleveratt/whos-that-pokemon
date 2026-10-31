@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who's That Pokémon? Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #ffcb05; --blue: #2a75bb; --navy: #163d6b; --twitch: #9146ff;
+    --bg: #eaf4fd; --card: #fff; --text: #1b2a3a; --muted: #5b6b7c; --line: #d3e2f0; --field: #f6faff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1a27; --card: #172636; --text: #e6eef7; --muted: #94a7bb; --line: #2a3d52; --field: #1e3044; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 600 16px/1.5 Nunito, system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 {
+    margin: 0; text-align: center; font: 400 52px/1 'Luckiest Guy', Impact, sans-serif; letter-spacing: 1px;
+    color: var(--yellow); -webkit-text-stroke: 4px var(--blue); paint-order: stroke fill; text-shadow: 0 5px 0 var(--navy);
+  }
+  .lead { text-align: center; color: var(--muted); margin: 14px auto 28px; max-width: 520px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 18px; }
+  h2 { margin: 0 0 12px; font-size: 20px; font-weight: 900; display: flex; align-items: center; gap: 10px; }
+  h2 .n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 15px; flex: none; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  button, .btn {
+    font: 800 15px Nunito, sans-serif; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+    background: var(--blue); color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  }
+  button.secondary { background: var(--field); color: var(--text); border: 1px solid var(--line); }
+  button.twitch { background: var(--twitch); }
+  button:disabled { opacity: .5; cursor: default; }
+  label { display: block; font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+  input[type=text], input[type=number], input[type=password] {
+    width: 100%; font: 600 15px Nunito, sans-serif; padding: 9px 11px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--field); color: var(--text);
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 14px; }
+  .gens { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+  .chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); cursor: pointer; font-weight: 700; font-size: 14px; }
+  .chip small { color: var(--muted); font-weight: 600; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-top: 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row input { flex: 1; min-width: 200px; }
+  .ok { color: #1f9d55; font-weight: 800; }
+  .bad { color: #d64545; font-weight: 800; }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  ol { margin: 8px 0 0; padding-left: 20px; }
+  ol li { margin-bottom: 4px; }
+  code { background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 14px; }
+  .warn { background: #fff4d6; color: #6b4e00; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 12px; }
+  @media (prefers-color-scheme: dark) { .warn { background: #3a3014; color: #f5dc8f; } }
+  #ownerNote { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Who's That Pokémon?</h1>
+  <p class="lead">A chat guessing game for your stream. Set it up below, then paste the link into OBS as a browser source.</p>
+
+  <section>
+    <h2><span class="n">1</span> Connect your Twitch account</h2>
+    <p class="muted">This lets the game post announcements (like who won) in your chat. The login stays in your overlay link and is never sent to this website.</p>
+    <div id="connectBox" class="row">
+      <button class="twitch" id="connectBtn">Connect with Twitch</button>
+    </div>
+    <p id="authStatus" style="margin-top:10px"></p>
+    <details id="manualBox">
+      <summary>Paste a chat token instead</summary>
+      <p class="muted" style="margin-top:8px">If you'd rather have a separate bot account post the messages, get a chat token for that account (with the <code>chat:read</code> and <code>chat:edit</code> scopes) and paste it here.</p>
+      <div class="row"><input type="password" id="manualToken" placeholder="oauth:…"><button class="secondary" id="manualBtn">Use token</button></div>
+    </details>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span> Settings</h2>
+    <div class="grid" style="margin-top:0">
+      <div><label for="channel">Your channel</label><input type="text" id="channel" placeholder="channel name"></div>
+      <div><label for="cmd">Start command</label><input type="text" id="cmd" value="!wtp"></div>
+    </div>
+
+    <label style="margin-top:16px">Default generations <span class="muted">(mods can still pick others with e.g. <code>!wtp 1-3</code>)</span></label>
+    <div class="gens" id="gens"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="secondary" type="button" id="allGens">All</button>
+      <button class="secondary" type="button" id="noGens">None</button>
+    </div>
+
+    <div class="grid">
+      <div><label for="seconds">Guessing time (s)</label><input type="number" id="seconds" min="5" max="300" value="30"></div>
+      <div><label for="reveal">Show answer for (s)</label><input type="number" id="reveal" min="2" max="60" value="8"></div>
+      <div><label for="hint">Hint at seconds left</label><input type="number" id="hint" min="0" max="300" value="10"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="end" checked> End the round as soon as someone guesses right</label>
+    <label class="check"><input type="checkbox" id="lenient"> Lenient spelling <span class="muted">(accept small typos like "pikachoo")</span></label>
+    <label class="check"><input type="checkbox" id="roleMod" checked> Mods can start rounds</label>
+    <label class="check"><input type="checkbox" id="roleVip" checked> VIPs can start rounds</label>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span> Add it to OBS</h2>
+    <div class="row">
+      <input type="password" id="url" readonly>
+      <button class="secondary" id="showBtn">Show</button>
+      <button id="copyBtn">Copy link</button>
+    </div>
+    <p id="copyMsg" class="muted" style="margin-top:6px"></p>
+    <div class="warn" id="secretWarn">Keep this link private. Anyone who has it can post in your chat as you. Don't show it on stream, and if it leaks, disconnect this site from your Twitch account under Settings → Connections.</div>
+    <ol>
+      <li>In OBS: <b>Sources → + → Browser</b>. Leave "Local file" unticked and paste the link as the URL.</li>
+      <li>Set width <b>800</b> and height <b>600</b>.</li>
+      <li>Untick <b>Shutdown source when not visible</b>.</li>
+      <li>To use it in other scenes, copy the source and use <b>Paste (Reference)</b>.</li>
+      <li>In chat, type <code id="cmdExample">!wtp</code> to play.</li>
+    </ol>
+    <div class="row" style="margin-top:12px">
+      <button class="secondary" id="testBtn">Test it in your browser</button>
+    </div>
+    <p class="muted" style="margin-top:6px">The test page has a panel where you can type pretend chat messages. Nothing is posted to Twitch in test mode.</p>
+  </section>
+
+  <section>
+    <h2>Commands</h2>
+    <p class="muted">Only you (and mods/VIPs if allowed) can use these. Everyone else just types the Pokémon's name.</p>
+    <ul id="cmdList" style="margin:0;padding-left:20px"></ul>
+  </section>
+
+  <section id="ownerNote">
+    <h2>Site owner setup</h2>
+    <p>The "Connect with Twitch" button needs a Twitch application. Register one at <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">dev.twitch.tv/console/apps</a> with this OAuth Redirect URL:</p>
+    <p><code id="redirectUrl"></code></p>
+    <p>Then put its Client ID in <code>twitchClientId</code> in <code>config.js</code> and upload it again.</p>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script>
+(() => {
+  const CLIENT_ID = (window.WTP_CONFIG || {}).twitchClientId || "";
+  const SCOPES = "chat:read chat:edit";
+  const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, "");
+  const GENS = [["Kanto", "1–151"], ["Johto", "152–251"], ["Hoenn", "252–386"], ["Sinnoh", "387–493"], ["Unova", "494–649"],
+    ["Kalos", "650–721"], ["Alola", "722–809"], ["Galar", "810–905"], ["Paldea", "906–1025"]];
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    sset(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} },
+  };
+
+  let auth = null; // { token, login }
+
+  // ---------- Generation checkboxes ----------
+  $("gens").innerHTML = GENS.map(([region, range], i) =>
+    `<label class="chip"><input type="checkbox" value="${i + 1}" checked> Gen ${i + 1} <small>${region}</small></label>`).join("");
+  const genBoxes = [...$("gens").querySelectorAll("input")];
+  $("allGens").onclick = () => { genBoxes.forEach(b => b.checked = true); update(); };
+  $("noGens").onclick = () => { genBoxes.forEach(b => b.checked = false); update(); };
+
+  function compactGens(list) {
+    if (list.length === 9 || list.length === 0) return "all";
+    const parts = [];
+    for (let i = 0; i < list.length; i++) {
+      let j = i;
+      while (j + 1 < list.length && list[j + 1] === list[j] + 1) j++;
+      parts.push(i === j ? `${list[i]}` : `${list[i]}-${list[j]}`);
+      i = j;
+    }
+    return parts.join(",");
+  }
+
+  // ---------- Saved settings (not the token) ----------
+  const fields = ["channel", "cmd", "seconds", "reveal", "hint", "end", "lenient", "roleMod", "roleVip"];
+  try {
+    const saved = JSON.parse(store.get("wtp-setup") || "{}");
+    for (const f of fields) if (f in saved) $(f).type === "checkbox" ? $(f).checked = saved[f] : $(f).value = saved[f];
+    if (saved.gens) genBoxes.forEach(b => b.checked = saved.gens.includes(+b.value));
+  } catch (e) {}
+
+  function save() {
+    const data = { gens: genBoxes.filter(b => b.checked).map(b => +b.value) };
+    for (const f of fields) data[f] = $(f).type === "checkbox" ? $(f).checked : $(f).value;
+    store.set("wtp-setup", JSON.stringify(data));
+  }
+
+  // ---------- Overlay link ----------
+  function overlayUrl(extra = "") {
+    const p = new URLSearchParams();
+    const channel = $("channel").value.trim().toLowerCase().replace(/^#/, "");
+    p.set("channel", channel);
+    if (auth) { p.set("bot", auth.login); p.set("token", auth.token); }
+    p.set("gens", compactGens(genBoxes.filter(b => b.checked).map(b => +b.value)));
+    p.set("seconds", $("seconds").value || 30);
+    p.set("reveal", $("reveal").value || 8);
+    p.set("hint", $("hint").value || 0);
+    p.set("end", $("end").checked ? 1 : 0);
+    p.set("lenient", $("lenient").checked ? 1 : 0);
+    p.set("roles", [$("roleMod").checked && "moderator", $("roleVip").checked && "vip"].filter(Boolean).join(","));
+    const cmd = $("cmd").value.trim().toLowerCase() || "!wtp";
+    if (cmd !== "!wtp") p.set("cmd", cmd);
+    return new URL("overlay.html", REDIRECT).href + "#" + p.toString() + extra;
+  }
+
+  function update() {
+    save();
+    const channel = $("channel").value.trim();
+    $("url").value = channel ? overlayUrl() : "";
+    $("url").placeholder = "Enter your channel name above";
+    [$("copyBtn"), $("testBtn"), $("showBtn")].forEach(b => b.disabled = !channel);
+    $("secretWarn").style.display = auth ? "block" : "none";
+
+    const cmd = $("cmd").value.trim().toLowerCase() || "!wtp";
+    $("cmdExample").textContent = cmd;
+    $("cmdList").innerHTML = [
+      [cmd, "start a round with your default generations"],
+      [cmd + " 1-3", "Gen 1 to 3 for this round (also works: 1,4,9 · kanto johto · all)"],
+      [cmd + "gen 1-2", "change the default generations"],
+      [cmd + "stop", "cancel the current round"],
+    ].map(([c, d]) => `<li><code>${c}</code> ${d}</li>`).join("");
+  }
+  document.querySelectorAll("input").forEach(i => i.addEventListener("input", update));
+
+  $("showBtn").onclick = () => {
+    const hidden = $("url").type === "password";
+    $("url").type = hidden ? "text" : "password";
+    $("showBtn").textContent = hidden ? "Hide" : "Show";
+  };
+  $("copyBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText($("url").value); }
+    catch (e) { $("url").type = "text"; $("url").select(); document.execCommand("copy"); }
+    $("copyMsg").textContent = "Copied! Paste it into the OBS browser source URL.";
+  };
+  $("testBtn").onclick = () => window.open(overlayUrl("&debug"), "_blank");
+
+  // ---------- Twitch login ----------
+  async function useToken(token) {
+    token = token.trim().replace(/^oauth:/i, "");
+    $("authStatus").innerHTML = "Checking…";
+    try {
+      const res = await fetch("https://id.twitch.tv/oauth2/validate", { headers: { Authorization: "OAuth " + token } });
+      if (!res.ok) throw new Error("invalid");
+      const info = await res.json();
+      if (!(info.scopes || []).includes("chat:edit")) throw new Error("scope");
+      auth = { token, login: info.login };
+      store.sset("wtp-token", token);
+      if (!$("channel").value.trim()) $("channel").value = info.login;
+      const days = info.expires_in ? Math.round(info.expires_in / 86400) : null;
+      $("authStatus").innerHTML = `<span class="ok">Connected as ${info.login}</span>` +
+        (days !== null ? ` <span class="muted">· login lasts about ${days} day${days === 1 ? "" : "s"}, then come back here for a new link</span>` : "") +
+        ` <button class="secondary" id="logoutBtn" style="margin-left:6px;padding:4px 10px">Disconnect</button>`;
+      $("logoutBtn").onclick = () => { auth = null; store.sset("wtp-token", null); $("authStatus").textContent = "Not connected. The game will still run, but won't post in chat."; update(); };
+    } catch (e) {
+      auth = null;
+      store.sset("wtp-token", null);
+      $("authStatus").innerHTML = e.message === "scope"
+        ? `<span class="bad">That token can't send chat messages (it needs the chat:edit scope).</span>`
+        : `<span class="bad">That login didn't work or has expired. Try connecting again.</span>`;
+    }
+    update();
+  }
+
+  $("connectBtn").onclick = () => {
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    store.sset("wtp-state", state);
+    const q = new URLSearchParams({ response_type: "token", client_id: CLIENT_ID, redirect_uri: REDIRECT, scope: SCOPES, state, force_verify: "true" });
+    location.href = "https://id.twitch.tv/oauth2/authorize?" + q;
+  };
+  $("manualBtn").onclick = () => $("manualToken").value.trim() && useToken($("manualToken").value);
+
+  if (!CLIENT_ID) {
+    $("connectBox").style.display = "none";
+    $("manualBox").open = true;
+    $("ownerNote").style.display = "block";
+    $("redirectUrl").textContent = REDIRECT;
+  }
+
+  // Coming back from Twitch: the token is in the URL hash
+  const back = new URLSearchParams(location.hash.slice(1));
+  const err = new URLSearchParams(location.search).get("error_description");
+  if (back.get("access_token") || err) history.replaceState(null, "", REDIRECT);
+  if (back.get("access_token")) {
+    if (back.get("state") === store.sget("wtp-state")) useToken(back.get("access_token"));
+    else $("authStatus").innerHTML = `<span class="bad">Login could not be verified. Please try again.</span>`;
+  } else if (err) {
+    $("authStatus").innerHTML = `<span class="bad">Twitch login cancelled.</span>`;
+  } else if (store.sget("wtp-token")) {
+    useToken(store.sget("wtp-token"));
+  } else {
+    $("authStatus").textContent = "Not connected. The game will still run, but won't post in chat.";
+  }
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Who's That Pokémon? Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --s: 1; --yellow: #ffcb05; --blue: #2a75bb; --navy: #163d6b; }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+
+  #viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage {
+    width: 800px; height: 600px; flex: none; position: relative;
+    opacity: 0; transform: scale(calc(var(--s) * 0.9));
+    transition: opacity .45s ease, transform .45s cubic-bezier(.2, 1.4, .4, 1);
+  }
+  #stage.show { opacity: 1; transform: scale(var(--s)); }
+
+  .card {
+    position: absolute; inset: 14px; border-radius: 30px; overflow: hidden;
+    border: 8px solid var(--yellow);
+    box-shadow: 0 0 0 6px var(--blue), 0 18px 40px rgba(0, 0, 0, .45);
+    background: #3a9be6;
+  }
+  .rays {
+    position: absolute; left: 50%; top: 46%; width: 1400px; height: 1400px; margin: -700px 0 0 -700px;
+    background: repeating-conic-gradient(from 0deg, #6cc8ff 0deg 9deg, #2f8fe0 9deg 18deg);
+    animation: spin 40s linear infinite;
+  }
+  .glow {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 46%, rgba(255, 255, 255, .85) 0, rgba(255, 255, 255, .25) 160px, transparent 330px);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .title {
+    position: absolute; top: 34px; left: 0; right: 0; text-align: center;
+    font-family: 'Luckiest Guy', Impact, sans-serif; font-size: 64px; line-height: 1;
+    color: var(--yellow); -webkit-text-stroke: 5px var(--blue); paint-order: stroke fill;
+    text-shadow: 0 6px 0 var(--navy); letter-spacing: 2px; transform: rotate(-3deg);
+  }
+  .gens {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font: 900 13px Nunito, sans-serif; color: #fff; background: var(--navy);
+    padding: 3px 12px; border-radius: 999px; letter-spacing: .5px; display: none; white-space: nowrap;
+  }
+
+  .warn {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: none; white-space: nowrap;
+    font: 800 12px Nunito, sans-serif; color: #fff; background: #c0392b; padding: 2px 10px; border-radius: 999px;
+  }
+
+  .mon { position: absolute; left: 50%; top: 280px; width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+  .mon img {
+    width: 100%; height: 100%; object-fit: contain;
+    filter: brightness(0) drop-shadow(0 0 4px rgba(255, 255, 255, .9));
+    transition: filter .5s ease;
+  }
+  .mon.revealed img { filter: brightness(1) drop-shadow(0 0 10px rgba(255, 255, 255, .95)); }
+  .mon.revealed { animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+  @keyframes pop { 0% { transform: scale(.85); } 100% { transform: scale(1); } }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  .flash.go { animation: flash .6s ease-out; }
+  @keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+
+  .hint {
+    position: absolute; left: 0; right: 0; top: 452px; text-align: center;
+    font: 900 34px Nunito, sans-serif; color: #fff; letter-spacing: 6px;
+    -webkit-text-stroke: 6px var(--navy); paint-order: stroke fill;
+    opacity: 0; transition: opacity .3s;
+  }
+  .hint.show { opacity: 1; }
+
+  .answer {
+    position: absolute; left: 50%; top: 438px; transform: translateX(-50%) scale(.6);
+    opacity: 0; transition: opacity .3s, transform .4s cubic-bezier(.2, 1.6, .4, 1);
+    text-align: center; white-space: nowrap;
+  }
+  .answer.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  .answer .name {
+    font-family: 'Luckiest Guy', Impact, sans-serif; font-size: 54px; line-height: 1.05;
+    color: var(--yellow); -webkit-text-stroke: 5px var(--blue); paint-order: stroke fill;
+    text-shadow: 0 5px 0 var(--navy);
+  }
+  .answer .result {
+    display: inline-block; margin-top: 6px; padding: 5px 16px; border-radius: 999px;
+    font: 900 20px Nunito, sans-serif; color: #fff; background: var(--navy);
+  }
+  .answer .result.win { background: #1f9d55; }
+
+  .timer {
+    position: absolute; left: 60px; right: 60px; bottom: 44px; height: 22px;
+    background: rgba(22, 61, 107, .75); border: 3px solid #fff; border-radius: 999px; overflow: hidden;
+    transition: opacity .3s;
+  }
+  .timer .fill {
+    position: absolute; inset: 0; transform-origin: left center; background: var(--yellow);
+    transition: transform .1s linear, background-color .3s;
+  }
+  .timer .fill.low { background: #ff4d4d; }
+  .timer .secs {
+    position: absolute; inset: 0; text-align: center; font: 900 14px/16px Nunito, sans-serif; color: var(--navy);
+  }
+  .timer.hidden { opacity: 0; }
+
+  /* Debug panel (only with ?debug in the URL) */
+  #debug {
+    position: fixed; left: 10px; bottom: 10px; width: 380px; z-index: 10;
+    font: 13px system-ui, sans-serif; color: #eee; background: rgba(20, 20, 30, .92);
+    border-radius: 10px; padding: 10px; display: none;
+  }
+  #debug.on { display: block; }
+  #debug .row { display: flex; gap: 6px; margin-top: 6px; }
+  #debug input, #debug select, #debug button { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid #555; background: #222; color: #eee; }
+  #debug input.msg { flex: 1; }
+  #debug .log { height: 150px; overflow-y: auto; margin-top: 6px; background: #111; border-radius: 6px; padding: 6px; white-space: pre-wrap; }
+  #debug .log .bot { color: #ffcb05; }
+  #debug .log .sys { color: #8ab4ff; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+    <div class="card">
+      <div class="rays"></div>
+      <div class="glow"></div>
+      <div class="title">Who's That Pokémon?</div>
+      <div class="gens" id="gens"></div>
+      <div class="warn" id="warn">Chat login expired — redo setup</div>
+      <div class="mon" id="mon"><img id="monImg" alt=""></div>
+      <div class="hint" id="hint"></div>
+      <div class="answer" id="answer">
+        <div class="name" id="answerName"></div>
+        <div class="result" id="answerResult"></div>
+      </div>
+      <div class="timer" id="timer"><div class="fill" id="timerFill"></div><div class="secs" id="timerSecs"></div></div>
+      <div class="flash" id="flash"></div>
+    </div>
+  </div>
+</div>
+
+<div id="debug">
+  <div><b>Debug</b> — <span id="dbgStatus">connecting…</span></div>
+  <div class="row">
+    <input id="dbgUser" value="TestUser" style="width:110px">
+    <select id="dbgRole">
+      <option value="broadcaster">broadcaster</option>
+      <option value="moderator">moderator</option>
+      <option value="vip">vip</option>
+      <option value="viewer">viewer</option>
+    </select>
+    <button id="dbgAnswer" title="Fill in the current answer">answer</button>
+  </div>
+  <div class="row"><input class="msg" id="dbgMsg" placeholder="Type a chat message, e.g. !wtp 1-3"><button id="dbgSend">Send</button></div>
+  <div class="log" id="dbgLog"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="pokemon-data.js"></script>
+<script>
+(() => {
+  // ---------- Settings ----------
+  const DEFAULTS = {
+    channel: "", botUsername: "", oauthToken: "",
+    allowedRoles: ["broadcaster", "moderator", "vip"], allowedUsers: [],
+    commands: { start: "!wtp", stop: "!wtpstop", setGens: "!wtpgen" },
+    defaultGenerations: "all",
+    roundSeconds: 30, revealSeconds: 8, endOnCorrectGuess: true, lenientSpelling: false,
+    hintAtSecondsLeft: 10, cooldownSeconds: 0, avoidRepeats: 50,
+    messages: {},
+  };
+  const user = window.WTP_CONFIG || {};
+  const cfg = { ...DEFAULTS, ...user,
+    commands: { ...DEFAULTS.commands, ...user.commands },
+    messages: { ...user.messages } };
+
+  // Settings can also come from the URL (?a=b or #a=b), which is how the hosted setup page
+  // (index.html) hands each streamer their own overlay. The hash is never sent to the web server.
+  const params = new URLSearchParams(location.search);
+  new URLSearchParams(location.hash.slice(1)).forEach((v, k) => params.set(k, v));
+  const DEBUG = params.has("debug");
+  if (params.get("channel")) {
+    cfg.channel = params.get("channel");
+    // Never use a token from config.js on someone else's channel
+    cfg.oauthToken = params.get("token") || "";
+    cfg.botUsername = params.get("bot") || cfg.channel;
+  }
+  if (params.get("gens")) cfg.defaultGenerations = params.get("gens");
+  const num = (key, prop) => { const v = parseFloat(params.get(key)); if (v >= 0) cfg[prop] = v; };
+  num("seconds", "roundSeconds");
+  num("reveal", "revealSeconds");
+  num("hint", "hintAtSecondsLeft");
+  num("cooldown", "cooldownSeconds");
+  if (params.has("end")) cfg.endOnCorrectGuess = params.get("end") !== "0";
+  if (params.has("lenient")) cfg.lenientSpelling = params.get("lenient") !== "0";
+  if (params.has("roles")) cfg.allowedRoles = ["broadcaster", ...params.get("roles").split(",").filter(Boolean)];
+  if (params.get("cmd")) {
+    const c = params.get("cmd").toLowerCase();
+    cfg.commands = { start: c, stop: c + "stop", setGens: c + "gen" };
+  }
+  cfg.channel = String(cfg.channel || "").toLowerCase().replace(/^#/, "").trim();
+
+  const NAMES = window.POKEMON_NAMES;
+  const GEN_RANGES = [null, [1, 151], [152, 251], [252, 386], [387, 493], [494, 649], [650, 721], [722, 809], [810, 905], [906, 1025]];
+  const ALL_GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const REGIONS = { kanto: 1, johto: 2, hoenn: 3, sinnoh: 4, unova: 5, kalos: 6, alola: 7, galar: 8, paldea: 9 };
+  const artUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+
+  // ---------- Elements ----------
+  const $ = id => document.getElementById(id);
+  const el = {
+    stage: $("stage"), gens: $("gens"), mon: $("mon"), img: $("monImg"), hint: $("hint"),
+    answer: $("answer"), answerName: $("answerName"), answerResult: $("answerResult"),
+    timer: $("timer"), timerFill: $("timerFill"), timerSecs: $("timerSecs"), flash: $("flash"),
+  };
+
+  function fit() {
+    const s = Math.min(innerWidth / 800, innerHeight / 600);
+    document.documentElement.style.setProperty("--s", s);
+  }
+  addEventListener("resize", fit);
+  fit();
+
+  // ---------- Generations ----------
+  function parseGens(input) {
+    if (Array.isArray(input)) input = input.join(",");
+    const s = String(input ?? "").toLowerCase()
+      .replace(/gen(eration)?s?/g, " ")
+      .replace(/\s*-\s*/g, "-")
+      .trim();
+    if (!s || s === "all") return ALL_GENS.slice();
+    const set = new Set();
+    for (const tok of s.split(/[\s,]+/).filter(Boolean)) {
+      if (tok === "all") { ALL_GENS.forEach(g => set.add(g)); continue; }
+      if (REGIONS[tok]) { set.add(REGIONS[tok]); continue; }
+      const m = tok.match(/^(\d)(?:-(\d))?$/);
+      if (!m) return null;
+      let a = +m[1], b = m[2] ? +m[2] : a;
+      if (a > b) [a, b] = [b, a];
+      if (a < 1 || b > 9) return null;
+      for (let g = a; g <= b; g++) set.add(g);
+    }
+    return set.size ? [...set].sort((x, y) => x - y) : null;
+  }
+
+  function formatGens(gens) {
+    if (gens.length === 9) return "All Gens";
+    const parts = [];
+    for (let i = 0; i < gens.length; i++) {
+      let j = i;
+      while (j + 1 < gens.length && gens[j + 1] === gens[j] + 1) j++;
+      parts.push(i === j ? `${gens[i]}` : `${gens[i]}-${gens[j]}`);
+      i = j;
+    }
+    return "Gen " + parts.join(", ");
+  }
+
+  let defaultGens = parseGens(cfg.defaultGenerations) || ALL_GENS.slice();
+  try {
+    const saved = parseGens(localStorage.getItem("wtp-gens"));
+    if (saved && !params.get("gens")) defaultGens = saved;
+  } catch (e) {}
+
+  // ---------- Names / guesses ----------
+  const norm = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/♀/g, "f").replace(/♂/g, "m").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  function answersFor(name) {
+    const set = new Set([norm(name)]);
+    if (/[♀♂]/.test(name)) {
+      const base = norm(name.replace(/[♀♂]/g, ""));
+      set.add(base);
+      set.add(base + (name.includes("♀") ? "female" : "male"));
+    }
+    return set;
+  }
+
+  // Lenient spelling: allow small typos (1 for names of 5-6 letters, 2 for 7+, none for short
+  // names so words like "new" don't win Mew). A guess that is exactly another Pokémon's name never counts.
+  const ALL_ANSWERS = new Set(NAMES.flatMap(n => [...answersFor(n)]));
+
+  function typoDistance(a, b) {
+    // Optimal string alignment distance: insert, delete, replace, or swap two neighbouring letters
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      }
+    }
+    return d[a.length][b.length];
+  }
+
+  function isCorrect(guess, answers) {
+    if (answers.has(guess)) return true;
+    if (!cfg.lenientSpelling || !guess || ALL_ANSWERS.has(guess)) return false;
+    for (const a of answers) {
+      const allowed = a.length <= 4 ? 0 : a.length <= 6 ? 1 : 2;
+      if (allowed && Math.abs(a.length - guess.length) <= allowed && typoDistance(guess, a) <= allowed) return true;
+    }
+    return false;
+  }
+
+  function hintFor(name) {
+    let first = true;
+    return [...name].map(ch => {
+      if (!/[\p{L}\p{N}]/u.test(ch)) return ch === " " ? " " : ch;
+      if (first) { first = false; return ch.toUpperCase(); }
+      return "_";
+    }).join(" ");
+  }
+
+  // ---------- Round logic ----------
+  let state = "idle"; // idle | loading | guessing | reveal
+  let round = null;
+  let tickTimer = null, hideTimer = null;
+  let cooldownUntil = 0;
+  const recent = [];
+
+  function pickPokemon(gens) {
+    const pool = [];
+    for (const g of gens) for (let id = GEN_RANGES[g][0]; id <= GEN_RANGES[g][1]; id++) pool.push(id);
+    let candidates = pool.filter(id => !recent.includes(id));
+    if (!candidates.length) candidates = pool;
+    const id = candidates[Math.floor(Math.random() * candidates.length)];
+    recent.push(id);
+    while (recent.length > Math.min(cfg.avoidRepeats, pool.length - 1)) recent.shift();
+    return id;
+  }
+
+  function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const t = setTimeout(() => reject(new Error("timeout")), 8000);
+      img.onload = () => { clearTimeout(t); resolve(url); };
+      img.onerror = () => { clearTimeout(t); reject(new Error("load failed")); };
+      img.src = url;
+    });
+  }
+
+  function fmt(template, vars) {
+    return String(template || "").replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  }
+
+  async function startRound(gens) {
+    if (state !== "idle" || Date.now() < cooldownUntil) return;
+    state = "loading";
+    clearTimeout(hideTimer);
+
+    let id = null;
+    for (let attempt = 0; attempt < 3 && id === null; attempt++) {
+      const candidate = pickPokemon(gens);
+      try { await loadImage(artUrl(candidate)); id = candidate; }
+      catch (e) { log(`Image for #${candidate} failed to load, trying another`, "sys"); }
+    }
+    if (id === null) { state = "idle"; log("Could not load any Pokémon images — check the internet connection.", "sys"); return; }
+
+    const name = NAMES[id - 1];
+    round = {
+      id, name, answers: answersFor(name), gens,
+      start: Date.now(), end: Date.now() + cfg.roundSeconds * 1000,
+      winner: null, winTime: 0, hinted: false,
+    };
+
+    // Reset visuals
+    el.img.src = artUrl(id);
+    el.mon.classList.remove("revealed");
+    el.answer.classList.remove("show");
+    el.hint.classList.remove("show");
+    el.hint.textContent = "";
+    el.timer.classList.remove("hidden");
+    el.timerFill.classList.remove("low");
+    el.gens.textContent = formatGens(gens);
+    el.gens.style.display = "block";
+    el.stage.classList.add("show");
+
+    state = "guessing";
+    log(`Round started: #${id} ${name}`, "sys");
+    say(cfg.messages.start, { seconds: cfg.roundSeconds, gens: formatGens(gens) });
+
+    clearInterval(tickTimer);
+    tickTimer = setInterval(tick, 100);
+    tick();
+  }
+
+  function tick() {
+    if (state !== "guessing" || !round) return;
+    const left = Math.max(0, round.end - Date.now());
+    const total = cfg.roundSeconds * 1000;
+    el.timerFill.style.transform = `scaleX(${left / total})`;
+    el.timerFill.classList.toggle("low", left <= 5000);
+    el.timerSecs.textContent = Math.ceil(left / 1000);
+
+    if (!round.hinted && cfg.hintAtSecondsLeft > 0 && left <= cfg.hintAtSecondsLeft * 1000) {
+      round.hinted = true;
+      const hint = hintFor(round.name);
+      el.hint.textContent = hint;
+      el.hint.classList.add("show");
+      say(cfg.messages.hint, { hint });
+    }
+    if (left <= 0) endRound();
+  }
+
+  function endRound({ cancelled = false } = {}) {
+    if (state !== "guessing" || !round) return;
+    state = "reveal";
+    clearInterval(tickTimer);
+
+    el.hint.classList.remove("show");
+    el.timer.classList.add("hidden");
+    el.mon.classList.add("revealed");
+    el.flash.classList.remove("go"); void el.flash.offsetWidth; el.flash.classList.add("go");
+
+    el.answerName.textContent = `It's ${round.name}!`;
+    const r = el.answerResult;
+    if (cancelled) {
+      r.textContent = "Round cancelled"; r.className = "result";
+      say(cfg.messages.cancel, { pokemon: round.name });
+    } else if (round.winner) {
+      r.textContent = `🏆 ${round.winner} got it!`; r.className = "result win";
+      say(cfg.messages.win, { user: round.winner, pokemon: round.name, time: round.winTime });
+    } else {
+      r.textContent = "Nobody guessed it!"; r.className = "result";
+      say(cfg.messages.nobody, { pokemon: round.name });
+    }
+    el.answer.classList.add("show");
+
+    hideTimer = setTimeout(() => {
+      el.stage.classList.remove("show");
+      setTimeout(() => {
+        state = "idle";
+        round = null;
+        cooldownUntil = Date.now() + cfg.cooldownSeconds * 1000;
+      }, 500);
+    }, (cancelled ? 3 : cfg.revealSeconds) * 1000);
+  }
+
+  // ---------- Chat handling ----------
+  function canControl(login, tags) {
+    const badges = tags.badges || "";
+    const roles = {
+      broadcaster: /(^|,)broadcaster\//.test(badges) || login === cfg.channel,
+      moderator: tags.mod === "1" || /(^|,)moderator\//.test(badges),
+      vip: tags.vip === "1" || /(^|,)vip\//.test(badges),
+    };
+    if (cfg.allowedRoles.some(r => roles[r])) return true;
+    return (cfg.allowedUsers || []).map(u => String(u).toLowerCase()).includes(login);
+  }
+
+  function handleChat(login, displayName, tags, text) {
+    text = text.trim();
+    const lower = text.toLowerCase();
+    const [cmd, ...rest] = lower.split(/\s+/);
+    const arg = rest.join(" ");
+    const c = cfg.commands;
+
+    if (cmd === c.start || cmd === c.stop || cmd === c.setGens) {
+      if (!canControl(login, tags)) return;
+      if (cmd === c.start) {
+        const gens = arg ? parseGens(arg) : defaultGens;
+        if (!gens) return say(cfg.messages.badGens, { user: displayName });
+        startRound(gens);
+      } else if (cmd === c.stop) {
+        endRound({ cancelled: true });
+      } else {
+        const gens = parseGens(arg);
+        if (!arg || !gens) return say(cfg.messages.badGens, { user: displayName });
+        defaultGens = gens;
+        try { localStorage.setItem("wtp-gens", gens.join(",")); } catch (e) {}
+        say(cfg.messages.gensSet, { gens: formatGens(gens) });
+      }
+      return;
+    }
+
+    if (state === "guessing" && round && !round.winner) {
+      const guess = norm(text.replace(/^!guess\s+/i, ""));
+      if (isCorrect(guess, round.answers)) {
+        round.winner = displayName;
+        round.winTime = ((Date.now() - round.start) / 1000).toFixed(1);
+        log(`${displayName} guessed correctly`, "sys");
+        if (cfg.endOnCorrectGuess) endRound();
+      }
+    }
+  }
+
+  // ---------- Twitch IRC ----------
+  let ws = null, authed = false, retry = 1000;
+  const token = String(cfg.oauthToken || "").trim();
+  let hasAuth = !!(token && cfg.botUsername);
+
+  function connect() {
+    if (!cfg.channel || cfg.channel === "yourchannel") {
+      status("Set your channel name in config.js");
+      return;
+    }
+    ws = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+    ws.onopen = () => {
+      retry = 1000;
+      ws.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
+      if (hasAuth) {
+        ws.send("PASS " + (token.startsWith("oauth:") ? token : "oauth:" + token));
+        ws.send("NICK " + cfg.botUsername.toLowerCase());
+      } else {
+        ws.send("NICK justinfan" + Math.floor(10000 + Math.random() * 80000));
+      }
+      ws.send("JOIN #" + cfg.channel);
+    };
+    ws.onmessage = e => e.data.split("\r\n").filter(Boolean).forEach(handleLine);
+    ws.onclose = () => {
+      authed = false;
+      status(`Disconnected — reconnecting in ${retry / 1000}s`);
+      setTimeout(connect, retry);
+      retry = Math.min(retry * 2, 30000);
+    };
+  }
+
+  function parseTags(raw) {
+    const tags = {};
+    for (const pair of raw.split(";")) {
+      const i = pair.indexOf("=");
+      tags[pair.slice(0, i)] = pair.slice(i + 1).replace(/\\s/g, " ").replace(/\\:/g, ";").replace(/\\\\/g, "\\");
+    }
+    return tags;
+  }
+
+  function handleLine(line) {
+    if (line.startsWith("PING")) { ws.send("PONG" + line.slice(4)); return; }
+    let tags = {};
+    if (line[0] === "@") {
+      const i = line.indexOf(" ");
+      tags = parseTags(line.slice(1, i));
+      line = line.slice(i + 1);
+    }
+    let prefix = "";
+    if (line[0] === ":") {
+      const i = line.indexOf(" ");
+      prefix = line.slice(1, i);
+      line = line.slice(i + 1);
+    }
+    let trailing = "";
+    const ti = line.indexOf(" :");
+    if (ti >= 0) { trailing = line.slice(ti + 2); line = line.slice(0, ti); }
+    const command = line.split(" ")[0];
+
+    if (command === "PRIVMSG") {
+      const login = prefix.split("!")[0].toLowerCase();
+      let text = trailing;
+      const action = text.match(/^\u0001ACTION (.*)\u0001$/);
+      if (action) text = action[1];
+      handleChat(login, tags["display-name"] || login, tags, text);
+    } else if (command === "001") {
+      authed = hasAuth;
+    } else if (command === "ROOMSTATE") {
+      status(hasAuth ? `Connected to #${cfg.channel} as ${cfg.botUsername}` : `Connected to #${cfg.channel} (read-only, no chat announcements)`);
+    } else if (command === "NOTICE" && /authentication failed|improperly formatted auth/i.test(trailing)) {
+      // Keep the game running without chat announcements, and say so on the overlay
+      hasAuth = false;
+      retry = 1000;
+      $("warn").style.display = "block";
+      status("Twitch login failed or expired — running read-only. Redo the setup page (or fix the token in config.js).");
+    } else if (command === "RECONNECT") {
+      ws.close();
+    }
+  }
+
+  function say(template, vars = {}) {
+    const text = fmt(template, vars).trim();
+    if (!text) return;
+    if (DEBUG) { log("BOT: " + text, "bot"); return; }
+    if (ws && ws.readyState === 1 && authed) ws.send(`PRIVMSG #${cfg.channel} :${text.slice(0, 480)}`);
+  }
+
+  // ---------- Debug panel ----------
+  const dbg = { panel: $("debug"), status: $("dbgStatus"), log: $("dbgLog"), user: $("dbgUser"), role: $("dbgRole"), msg: $("dbgMsg") };
+
+  function status(text) {
+    console.log("[WTP] " + text);
+    dbg.status.textContent = text;
+  }
+
+  function log(text, cls = "") {
+    console.log("[WTP] " + text);
+    if (!DEBUG) return;
+    const line = document.createElement("div");
+    line.className = cls;
+    line.textContent = text;
+    dbg.log.appendChild(line);
+    dbg.log.scrollTop = dbg.log.scrollHeight;
+  }
+
+  if (DEBUG) {
+    dbg.panel.classList.add("on");
+    const send = () => {
+      const text = dbg.msg.value;
+      if (!text.trim()) return;
+      const name = dbg.user.value.trim() || "TestUser";
+      const role = dbg.role.value;
+      const tags = { badges: role === "viewer" ? "" : role + "/1", mod: role === "moderator" ? "1" : "0" };
+      log(`${name}: ${text}`);
+      handleChat(name.toLowerCase(), name, tags, text);
+      dbg.msg.value = "";
+    };
+    $("dbgSend").onclick = send;
+    dbg.msg.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+    $("dbgAnswer").onclick = () => { if (round) dbg.msg.value = round.name; dbg.msg.focus(); };
+    log(`Default generations: ${formatGens(defaultGens)}. Bot messages are shown here instead of being sent to chat.`, "sys");
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>
