@@ -44,7 +44,7 @@ window.WTP_CONFIG = {
   lenientSpelling: false,   // true = accept small typos ("pikachoo", "charzard"); short names like Mew still need exact spelling
   hintAtSecondsLeft: 10,    // show first letter + blanks with this many seconds left (0 = no hint)
   cooldownSeconds: 0,       // wait time after a round before a new one can start
-  avoidRepeats: 50,         // don't repeat any of the last N Pokémon
+  noRepeats: true,          // true = every Pokémon in the chosen generations comes up once before any repeats (remembered between OBS restarts); false = pure random
 
   // Sound effects (files in the "sounds" folder). Each event picks one file at random from its list.
   soundVolume: 80,          // 0-100, 0 = no sound

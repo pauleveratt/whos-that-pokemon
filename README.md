@@ -125,6 +125,11 @@ The first correct guess wins.
 - `chatDelaySeconds`: how long to wait after the overlay reveals the answer before posting the winner or answer
   in chat (default 5). Your stream reaches viewers a few seconds late, so without this, chat would see the answer
   before the reveal shows on stream. Match it roughly to your stream delay, or set `0` to post straight away.
+- `noRepeats`: `true` (default) works through every Pokémon in the chosen generations before any repeats, like
+  shuffling a deck of cards. Where it's up to is remembered between OBS restarts and refreshes. When a generation set
+  runs out it reshuffles, and the next Pokémon is never the one just shown. Set `false` for pure random picks, where
+  repeats can happen at any time. To restart the shuffle, click **Refresh cache of current page** in the OBS browser
+  source properties.
 - `cooldownSeconds`: minimum gap between rounds.
 - `soundVolume` / `sounds`: sound effects from the `sounds` folder. One plays when a round starts, and one when the answer
   is revealed (a different set for a winner and for nobody). When an event has more than one file, one is picked at

@@ -174,7 +174,7 @@
       start: ["sounds/whos-that-pokemon.mp3"],
       win: ["sounds/capture.mp3", "sounds/item-get.mp3"],
       nobody: ["sounds/run-away.mp3", "sounds/walk-into.mp3"],
-    }, avoidRepeats: 50,
+    }, noRepeats: true,
     messages: {},
   };
   const user = window.WTP_CONFIG || {};
@@ -328,16 +328,36 @@
   let round = null;
   let tickTimer = null, hideTimer = null;
   let cooldownUntil = 0;
-  const recent = [];
+
+  // Picks without replacement: every Pokémon in the chosen generations comes up once before any repeats.
+  // Progress is saved in the browser so reloading the overlay in OBS doesn't start the shuffle over.
+  let seen = new Set();
+  try { seen = new Set(JSON.parse(localStorage.getItem("wtp-seen") || "[]")); } catch (e) {}
+  let lastPicked = null;
+
+  function randomInt(n) {
+    // Unbiased pick from 0..n-1 using the browser's crypto randomness
+    const limit = Math.floor(0x100000000 / n) * n;
+    const buf = new Uint32Array(1);
+    do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+    return buf[0] % n;
+  }
 
   function pickPokemon(gens) {
     const pool = [];
     for (const g of gens) for (let id = GEN_RANGES[g][0]; id <= GEN_RANGES[g][1]; id++) pool.push(id);
-    let candidates = pool.filter(id => !recent.includes(id));
-    if (!candidates.length) candidates = pool;
-    const id = candidates[Math.floor(Math.random() * candidates.length)];
-    recent.push(id);
-    while (recent.length > Math.min(cfg.avoidRepeats, pool.length - 1)) recent.shift();
+    let candidates = cfg.noRepeats ? pool.filter(id => !seen.has(id)) : pool;
+    if (!candidates.length) {
+      // Everything in this pool has been shown: start a new cycle, but not with the one just shown
+      pool.forEach(id => seen.delete(id));
+      candidates = pool.length > 1 ? pool.filter(id => id !== lastPicked) : pool;
+    }
+    const id = candidates[randomInt(candidates.length)];
+    lastPicked = id;
+    if (cfg.noRepeats) {
+      seen.add(id);
+      try { localStorage.setItem("wtp-seen", JSON.stringify([...seen])); } catch (e) {}
+    }
     return id;
   }
 
