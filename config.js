@@ -41,7 +41,7 @@ window.WTP_CONFIG = {
   revealSeconds: 8,         // how long the answer stays on screen
   chatDelaySeconds: 5,      // wait this long after the reveal before posting the answer/winner in chat (covers stream delay)
   endOnCorrectGuess: true,  // true = reveal as soon as someone gets it; false = always run the full timer
-  lenientSpelling: false,   // true = accept small typos ("pikachoo", "charzard"); short names like Mew still need exact spelling
+  lenientSpelling: false,   // true = accept sound-alike spellings ("vileploom") and small typos ("pikachoo", "charzard"); short names like Mew still need exact spelling
   hintAtSecondsLeft: 10,    // show first letter + blanks with this many seconds left (0 = no hint)
   cooldownSeconds: 0,       // wait time after a round before a new one can start
   noRepeats: true,          // true = every Pokémon in the chosen generations comes up once before any repeats (remembered between OBS restarts); false = pure random

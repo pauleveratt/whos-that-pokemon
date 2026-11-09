@@ -286,9 +286,35 @@
     return set;
   }
 
-  // Lenient spelling: allow small typos (1 for names of 5-6 letters, 2 for 7+, none for short
+  // Lenient spelling: accept sound-alike spellings, and small typos (1 for names of 5-6 letters, 2 for 7+, none for short
   // names so words like "new" don't win Mew). A guess that is exactly another Pokémon's name never counts.
   const ALL_ANSWERS = new Set(NAMES.flatMap(n => [...answersFor(n)]));
+
+  // Sound-alike spellings: fold letters that are often swapped so "vileploom" matches "vileplume"
+  function fold(s) {
+    return s
+      .replace(/ph/g, "f")
+      .replace(/ch/g, "#")            // keep "ch" as its own sound
+      .replace(/ck/g, "k")
+      .replace(/c(?=[eiy])/g, "s")    // soft c
+      .replace(/c/g, "k")
+      .replace(/#/g, "ch")
+      .replace(/x/g, "ks")
+      .replace(/z/g, "s")
+      .replace(/y/g, "i")
+      .replace(/oo/g, "u")
+      .replace(/e[ea]/g, "i")
+      .replace(/(.)\1+/g, "$1")       // double letters
+      .replace(/([^aeiou])e$/, "$1"); // silent final e
+  }
+
+  // Which Pokémon each folded spelling belongs to; a spelling shared by two Pokémon is never accepted
+  const FOLD_OWNERS = new Map();
+  NAMES.forEach((n, i) => answersFor(n).forEach(a => {
+    const f = fold(a);
+    if (!FOLD_OWNERS.has(f)) FOLD_OWNERS.set(f, new Set());
+    FOLD_OWNERS.get(f).add(i);
+  }));
 
   function typoDistance(a, b) {
     // Optimal string alignment distance: insert, delete, replace, or swap two neighbouring letters
@@ -307,6 +333,8 @@
   function isCorrect(guess, answers) {
     if (answers.has(guess)) return true;
     if (!cfg.lenientSpelling || !guess || ALL_ANSWERS.has(guess)) return false;
+    const folded = fold(guess);
+    if (folded.length > 3 && FOLD_OWNERS.get(folded)?.size === 1 && [...answers].some(a => fold(a) === folded)) return true;
     for (const a of answers) {
       const allowed = a.length <= 4 ? 0 : a.length <= 6 ? 1 : 2;
       if (allowed && Math.abs(a.length - guess.length) <= allowed && typoDistance(guess, a) <= allowed) return true;

@@ -118,10 +118,16 @@ The first correct guess wins.
   too, e.g. "It's Pikachu! Ash got it first in 3.2s. Also got it: Misty, Brock". The wording is the `winMany` message.
   If more names than fit in one chat message, it ends with "and N more". If only one person got it, the normal
   `win` message is used. Each person is counted once, however many times they type the answer.
-- `lenientSpelling`: `true` accepts small typos. Names of 5–6 letters allow one mistake (`evee`, `gengr`),
-  and names of 7+ letters allow two (`pikachoo`, `charzard`). A swapped pair of letters counts as one mistake (`bulbasuar`). Names of 4 letters or fewer, like Mew or Muk, still need exact spelling,
-  so everyday words like "new" don't win by accident. A guess that is exactly another Pokémon's name never
-  counts (e.g. `porygon2` when the answer is Porygon-Z). Hosted users set this with a tickbox on the setup page.
+- `lenientSpelling`: `true` accepts sound-alike spellings and small typos.
+  - **Sound-alikes:** spellings that sound the same count, such as `vileploom` for Vileplume, `charisard`, `onicks` or
+    `fanpy` for Phanpy. These swaps are treated as the same: `oo`/`u`, `ph`/`f`, `c`/`k`/`ck`, `z`/`s`, `y`/`i`,
+    `x`/`ks`, `ee`/`ea`/`i`, doubled letters, and a silent final `e`. The spelling must still be more than 3 letters
+    after that, and must not also match a different Pokémon.
+  - **Typos:** names of 5–6 letters allow one mistake (`evee`, `gengr`), and names of 7+ letters allow two
+    (`pikachoo`, `charzard`). A swapped pair of letters counts as one mistake (`bulbasuar`). Names of 4 letters or
+    fewer, like Mew or Muk, still need exact spelling, so everyday words like "new" don't win by accident.
+  - A guess that is exactly another Pokémon's name never counts (e.g. `porygon2` when the answer is Porygon-Z).
+  - Hosted users set this with a tickbox on the setup page.
 - `hintAtSecondsLeft`: with this many seconds left, shows the first letter and blanks (e.g. `P _ _ _ _ _ _`).
   Set to `0` for no hints.
 - `defaultGenerations`: e.g. `[1]`, `[1, 2, 3]` or `"all"`.
