@@ -286,8 +286,9 @@
     return set;
   }
 
-  // Lenient spelling: accept sound-alike spellings, and small typos (1 for names of 5-6 letters, 2 for 7+, none for short
-  // names so words like "new" don't win Mew). A guess that is exactly another Pokémon's name never counts.
+  // Lenient spelling: accept sound-alike spellings, and small typos (1 for names of 5-6 letters, 2 for 7+; names of
+  // 4 letters or fewer only accept sound-alikes, so words like "new" or "men" don't win Mew).
+  // A guess that is exactly another Pokémon's name never counts.
   const ALL_ANSWERS = new Set(NAMES.flatMap(n => [...answersFor(n)]));
 
   // Sound-alike spellings: fold letters that are often swapped so "vileploom" matches "vileplume"
@@ -334,10 +335,12 @@
     if (answers.has(guess)) return true;
     if (!cfg.lenientSpelling || !guess || ALL_ANSWERS.has(guess)) return false;
     const folded = fold(guess);
-    if (folded.length > 3 && FOLD_OWNERS.get(folded)?.size === 1 && [...answers].some(a => fold(a) === folded)) return true;
+    if (FOLD_OWNERS.get(folded)?.size === 1 && [...answers].some(a => fold(a) === folded)) return true;
     for (const a of answers) {
-      const allowed = a.length <= 4 ? 0 : a.length <= 6 ? 1 : 2;
-      if (allowed && Math.abs(a.length - guess.length) <= allowed && typoDistance(guess, a) <= allowed) return true;
+      const allowed = a.length <= 6 ? 1 : 2;
+      // Very short names only accept sound-alikes, so everyday words one letter off ("men", "sell") can't win
+      if (a.length <= 4) continue;
+      if (Math.abs(a.length - guess.length) <= allowed && typoDistance(guess, a) <= allowed) return true;
     }
     return false;
   }

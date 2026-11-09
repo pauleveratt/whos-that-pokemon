@@ -121,11 +121,12 @@ The first correct guess wins.
 - `lenientSpelling`: `true` accepts sound-alike spellings and small typos.
   - **Sound-alikes:** spellings that sound the same count, such as `vileploom` for Vileplume, `charisard`, `onicks` or
     `fanpy` for Phanpy. These swaps are treated as the same: `oo`/`u`, `ph`/`f`, `c`/`k`/`ck`, `z`/`s`, `y`/`i`,
-    `x`/`ks`, `ee`/`ea`/`i`, doubled letters, and a silent final `e`. The spelling must still be more than 3 letters
-    after that, and must not also match a different Pokémon.
+    `x`/`ks`, `ee`/`ea`/`i`, doubled letters, and a silent final `e`. This works for every name length (`seal` for
+    Seel), but the spelling must not also match a different Pokémon.
   - **Typos:** names of 5–6 letters allow one mistake (`evee`, `gengr`), and names of 7+ letters allow two
     (`pikachoo`, `charzard`). A swapped pair of letters counts as one mistake (`bulbasuar`). Names of 4 letters or
-    fewer, like Mew or Muk, still need exact spelling, so everyday words like "new" don't win by accident.
+    fewer, like Mew, Muk or Seel, don't allow typos, only sound-alikes (`seal`, `muck`). Otherwise everyday words
+    one letter off, like `men` or `met` for Mew, `mud` for Muk or `sell` for Seel, would win by accident.
   - A guess that is exactly another Pokémon's name never counts (e.g. `porygon2` when the answer is Porygon-Z).
   - Hosted users set this with a tickbox on the setup page.
 - `hintAtSecondsLeft`: with this many seconds left, shows the first letter and blanks (e.g. `P _ _ _ _ _ _`).
