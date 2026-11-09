@@ -55,12 +55,14 @@ window.WTP_CONFIG = {
     nobody: ["sounds/run-away.mp3", "sounds/walk-into.mp3"],
   },
 
-  // Chat messages. Placeholders: {user} {pokemon} {seconds} {gens} {time} {hint}
+  // Chat messages. Placeholders: {user} {pokemon} {seconds} {gens} {time} {hint} {others} {count}
   // Set a message to "" to not send it.
   messages: {
     start: "Who's That Pokémon?! Type your guess in chat — you have {seconds} seconds! ({gens})",
     hint: "Hint: {hint}",
     win: "{user} got it in {time}s! It's {pokemon}!",
+    // Used instead of "win" when endOnCorrectGuess is false and more than one person got it. Also has {others} and {count}.
+    winMany: "It's {pokemon}! {user} got it first in {time}s. Also got it: {others}",
     nobody: "Time's up! Nobody guessed it — it was {pokemon}!",
     cancel: "Round cancelled — it was {pokemon}.",
     gensSet: "Who's That Pokémon will now use {gens}.",

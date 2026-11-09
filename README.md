@@ -113,8 +113,11 @@ The first correct guess wins.
 ## Settings worth knowing (in `config.js`)
 
 - `roundSeconds`: guessing time (default 30).
-- `endOnCorrectGuess`: `true` reveals as soon as someone gets it. `false` always runs the full timer
-  (the first correct guesser still wins).
+- `endOnCorrectGuess`: `true` reveals as soon as someone gets it. `false` always runs the full timer, so everyone
+  gets a chance to guess. The first correct guesser still wins, and everyone else who got it right is listed
+  too, e.g. "It's Pikachu! Ash got it first in 3.2s. Also got it: Misty, Brock". The wording is the `winMany` message.
+  If more names than fit in one chat message, it ends with "and N more". If only one person got it, the normal
+  `win` message is used. Each person is counted once, however many times they type the answer.
 - `lenientSpelling`: `true` accepts small typos. Names of 5–6 letters allow one mistake (`evee`, `gengr`),
   and names of 7+ letters allow two (`pikachoo`, `charzard`). A swapped pair of letters counts as one mistake (`bulbasuar`). Names of 4 letters or fewer, like Mew or Muk, still need exact spelling,
   so everyday words like "new" don't win by accident. A guess that is exactly another Pokémon's name never

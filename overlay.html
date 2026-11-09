@@ -175,13 +175,13 @@
       win: ["sounds/capture.mp3", "sounds/item-get.mp3"],
       nobody: ["sounds/run-away.mp3", "sounds/walk-into.mp3"],
     }, noRepeats: true,
-    messages: {},
+    messages: { winMany: "It's {pokemon}! {user} got it first in {time}s. Also got it: {others}" },
   };
   const user = window.WTP_CONFIG || {};
   const cfg = { ...DEFAULTS, ...user,
     commands: { ...DEFAULTS.commands, ...user.commands },
     sounds: { ...DEFAULTS.sounds, ...user.sounds },
-    messages: { ...user.messages } };
+    messages: { ...DEFAULTS.messages, ...user.messages } };
 
   // Settings can also come from the URL (?a=b or #a=b), which is how the hosted setup page
   // (index.html) hands each streamer their own overlay. The hash is never sent to the web server.
@@ -390,6 +390,17 @@
     next();
   }
 
+  // "A, B, C" for the chat message, cut short with "and N more" so it stays under Twitch's length limit
+  function joinNames(list) {
+    let out = "";
+    for (let i = 0; i < list.length; i++) {
+      const next = out ? `${out}, ${list[i].name}` : list[i].name;
+      if (out && next.length > 250) return `${out} and ${list.length - i} more`;
+      out = next;
+    }
+    return out;
+  }
+
   function fmt(template, vars) {
     return String(template || "").replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
   }
@@ -411,7 +422,7 @@
     round = {
       id, name, answers: answersFor(name), gens,
       start: Date.now(), end: Date.now() + cfg.roundSeconds * 1000,
-      winner: null, winTime: 0, hinted: false,
+      winner: null, winTime: 0, correct: [], hinted: false,
     };
 
     // Reset visuals
@@ -475,9 +486,16 @@
       r.textContent = "Round cancelled"; r.className = "result";
       sayLater(cfg.messages.cancel, { pokemon: round.name });
     } else if (round.winner) {
-      r.textContent = `🏆 ${round.winner} got it!`; r.className = "result win";
+      const others = round.correct.slice(1);
+      r.className = "result win";
       playSound("win");
-      sayLater(cfg.messages.win, { user: round.winner, pokemon: round.name, time: round.winTime });
+      if (others.length) {
+        r.textContent = `🏆 ${round.winner} got it first! +${others.length} more`;
+        sayLater(cfg.messages.winMany, { user: round.winner, pokemon: round.name, time: round.winTime, others: joinNames(others), count: others.length });
+      } else {
+        r.textContent = `🏆 ${round.winner} got it!`;
+        sayLater(cfg.messages.win, { user: round.winner, pokemon: round.name, time: round.winTime });
+      }
     } else {
       r.textContent = "Nobody guessed it!"; r.className = "result";
       playSound("nobody");
@@ -532,12 +550,14 @@
       return;
     }
 
-    if (state === "guessing" && round && !round.winner) {
+    // Everyone who guesses right is recorded once, in order; the first is the winner
+    if (state === "guessing" && round && !round.correct.some(c => c.login === login)) {
       const guess = norm(text.replace(/^!guess\s+/i, ""));
       if (isCorrect(guess, round.answers)) {
-        round.winner = displayName;
-        round.winTime = ((Date.now() - round.start) / 1000).toFixed(1);
-        log(`${displayName} guessed correctly`, "sys");
+        const time = ((Date.now() - round.start) / 1000).toFixed(1);
+        round.correct.push({ login, name: displayName, time });
+        if (round.correct.length === 1) { round.winner = displayName; round.winTime = time; }
+        log(`${displayName} guessed correctly (${time}s)`, "sys");
         if (cfg.endOnCorrectGuess) endRound();
       }
     }
